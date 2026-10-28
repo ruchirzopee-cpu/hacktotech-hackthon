@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "EcoTrack — Energy & Water Tracker"
+description = "A responsive sustainability tracker for students, households, and institutions to log electricity and water use, compare consumption with targets, and get practical conservation insights. Demo-ready and privacy-friendly with local browser persistence."
+version = "1.0.0"
+id = "artifacts/ecotrack"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 26039
+
+[services.development]
+run = "pnpm --filter @workspace/ecotrack run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ecotrack", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ecotrack/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26039"
+BASE_PATH = "/"

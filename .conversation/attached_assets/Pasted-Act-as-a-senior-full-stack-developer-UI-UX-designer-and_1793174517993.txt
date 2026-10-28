@@ -1,0 +1,129 @@
+Act as a senior full-stack developer, UI/UX designer, and hackathon mentor. Build a complete, polished, responsive web application called **EcoTrack — Energy & Water Tracker**.
+
+## 1. Project goal
+Create a website that helps students, hostel residents, households, and institutions monitor electricity and water consumption, identify possible wastage, receive personalized conservation tips, and develop sustainable habits.
+
+The website must be suitable for a student hackathon demo and must actually work, not just display a static design.
+
+## 2. Target users
+- College and hostel students
+- Households
+- Small institutions
+- Environment-conscious users
+
+## 3. Design and user experience
+Create a modern, premium-looking sustainability dashboard.
+
+Design requirements:
+- Use a clean white or light background.
+- Use forest green, emerald green, and water blue as accent colors.
+- Use attractive cards, rounded corners, subtle shadows, and clean typography.
+- Add suitable icons for electricity, water, money saved, and sustainability.
+- Include a responsive sidebar on desktop and a mobile-friendly navigation menu.
+- Use smooth, subtle animations and interactive charts.
+- Make the interface look like a real startup product, not a generic template.
+- Use accessible colors, readable text, and clear buttons.
+
+## 4. Required features
+
+### Feature A: Energy Tracker
+- Allow users to enter daily electricity consumption in kWh.
+- Include the date, usage amount, and an optional note.
+- Allow users to view, edit, and delete recorded entries.
+- Calculate daily and weekly consumption totals.
+- Allow users to set a daily or weekly electricity usage target.
+- Display comparisons against their target.
+- Optionally calculate estimated electricity cost using a configurable price per kWh.
+
+### Feature B: Water Tracker
+- Allow users to enter daily water consumption in litres.
+- Include the date, amount, and an optional note.
+- Allow users to view, edit, and delete records.
+- Calculate daily and weekly water consumption.
+- Allow users to set a water usage target.
+- Display whether consumption is above or below the target.
+
+### Feature C: Interactive Dashboard
+Create a dashboard containing:
+- Total electricity consumption.
+- Total water consumption.
+- Estimated electricity cost.
+- Current Eco Score.
+- Daily and weekly charts.
+- Energy and water target progress bars.
+- Recent activity.
+- A summary of possible resource wastage.
+
+Use a chart library such as Recharts if the existing project supports React. Charts must update when records change.
+
+### Feature D: High-Consumption Alerts
+- Compare recorded usage with user-defined targets.
+- Show an alert when usage exceeds a target.
+- Highlight unusual increases compared with previous records when sufficient data is available.
+- Explain why the alert appeared.
+- Provide a practical action the user can take.
+- Avoid claiming that a physical leak or faulty appliance has been detected without actual sensor data.
+
+### Feature E: Smart Saving Suggestions
+Generate useful recommendations based on recorded data and targets.
+
+Examples:
+- If electricity usage exceeds the target, suggest switching off unused lights and fans.
+- If water usage exceeds the target, suggest checking taps and reducing unnecessary water use.
+- If consumption improves, show positive feedback.
+- Make suggestions specific to the user's recorded data whenever possible.
+
+Use simple rule-based logic. Do not require an external AI API or paid service.
+
+### Feature F: Eco Score
+Create an understandable Eco Score from 0 to 100 using consumption compared with user-defined targets and recent performance.
+
+Requirements:
+- Clearly explain how the score is calculated.
+- Use both energy and water performance.
+- Handle missing data gracefully.
+- Avoid awarding a perfect score when there is insufficient data.
+- Display a score indicator, progress bar, and conservation tips.
+- Keep the scoring formula consistent and transparent.
+
+## 5. Additional requirements
+- Add a Home/Dashboard, Energy, Water, Insights, and Settings section.
+- Include a date filter for viewing records.
+- Add a first-time welcome screen or empty state.
+- Provide sample/demo data so judges can explore the website immediately.
+- Add a button to load or reset demo data.
+- Include form validation and helpful error messages.
+- Confirm before deleting a record.
+- Persist records and settings using localStorage so data remains after refreshing the page.
+- Display units correctly: kWh, litres, and ₹.
+- Add a clear disclaimer that consumption and savings estimates are based on manually entered data.
+- Include a responsive layout for laptops and mobile phones.
+
+## 6. Technical requirements
+- First inspect the existing project and its framework before making changes.
+- Reuse the current framework and package manager if a project already exists.
+- If starting from scratch, use React with Vite and a suitable CSS solution.
+- Use reusable components and maintainable code.
+- Use localStorage for persistence.
+- Use Recharts for charts if compatible.
+- Do not require a backend, login system, paid API, or hardware sensors for the MVP.
+- Do not add unnecessary dependencies.
+- Ensure all navigation links, buttons, forms, filters, and charts work.
+- Handle empty data, invalid inputs, and storage errors gracefully.
+- Never use fake buttons that do nothing.
+
+## 7. Development process
+1. Inspect the project files and identify the available tools.
+2. Plan the components and data structure.
+3. Build the complete MVP.
+4. Implement all six required features.
+5. Test every important interaction.
+6. Fix compilation errors, runtime errors, and layout issues.
+7. Confirm that records persist after refreshing.
+8. Provide clear instructions to install dependencies and run the project.
+9. Explain how to test each feature during the hackathon presentation.
+
+## 8. Definition of done
+The project is complete only when a user can record energy and water consumption, see the dashboard update, receive meaningful alerts and recommendations, view the Eco Score, edit and delete records, and refresh the page without losing saved data.
+
+Prioritize a reliable, visually impressive working demo over unnecessary complexity. Do not stop after generating a plan or a static mockup. Build the application and verify it works.
