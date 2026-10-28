@@ -228,12 +228,13 @@ function Overview({ entries, settings, onDemo, onClear, welcome, setWelcome }: P
     <p className="disclaimer" style={{ marginTop: 20 }} data-testid="text-disclaimer">Consumption and savings estimates are based on manually entered data. EcoTrack does not read meters or detect hardware issues.</p>
   </main>;
 }
-function RecordsPage({ kind, entries, setEntries, onDemo, storageIssue }: Pick<Props, 'entries' | 'setEntries' | 'onDemo' | 'storageIssue'> & { kind: Kind }) {
+function RecordsPage({ kind, entries, setEntries, settings, onDemo, storageIssue }: Pick<Props, 'entries' | 'setEntries' | 'settings' | 'onDemo' | 'storageIssue'> & { kind: Kind }) {
   const [filter, setFilter] = useState('');
   const [form, setForm] = useState({ date: isoDaysAgo(0), amount: '', note: '' });
   const [editId, setEditId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const stats = useStats(entries, settings);
   const records = entries.filter((e) => e.kind === kind && (!filter || e.date === filter)).sort((a, b) => b.date.localeCompare(a.date));
   const save = (event: FormEvent) => {
     event.preventDefault();
@@ -252,6 +253,17 @@ function RecordsPage({ kind, entries, setEntries, onDemo, storageIssue }: Pick<P
   return <main className="content">
     <div className="page-heading"><div><div className="eyebrow">Manual records</div><h1>{label} journal</h1><p className="subtitle">Record daily use and notice the routines behind it.</p></div><button className="button button-quiet" onClick={onDemo} data-testid={`button-demo-${kind}`}><Sparkles size={15} />Load sample data</button></div>
     {storageIssue && <div className="data-warning" role="status" data-testid="storage-warning">{storageIssue}</div>}
+    {kind === 'energy' && <>
+      <div className="energy-summary-grid">
+        <Metric label="Electricity today" value={`${fmt(stats.energyToday)} kWh`} foot={`Daily goal ${fmt(settings.energyDaily)} kWh`} icon={Zap} type="energy" testid="energy-page-today-total" />
+        <Metric label="Electricity · 7 days" value={`${fmt(stats.energyWeek)} kWh`} foot={`Estimated cost ₹${fmt(stats.cost, 0)} · ₹${fmt(settings.price, 2)}/kWh`} icon={Activity} type="cost" testid="energy-page-week-total" />
+      </div>
+      <section className="card panel energy-progress-panel" data-testid="energy-target-progress">
+        <div className="panel-heading"><div><h2 className="panel-title">Electricity target progress</h2><p className="panel-note">Compare your logged use with the goals you set.</p></div></div>
+        <Progress title="Today" current={stats.energyToday} target={settings.energyDaily} kind="energy" />
+        <Progress title="This week" current={stats.energyWeek} target={settings.energyWeekly} kind="energy" period="week" />
+      </section>
+    </>}
     <div className="toolbar"><input type="date" aria-label="Filter by date" value={filter} onChange={(e) => setFilter(e.target.value)} data-testid={`filter-date-${kind}`} /><button className="button button-quiet" onClick={() => setFilter('')} data-testid={`button-clear-filter-${kind}`}>Clear filter</button><span className="panel-note">{records.length} {records.length === 1 ? 'record' : 'records'}{filter ? ` for ${humanDate(filter)}` : ''}</span></div>
     <div className="record-layout">
       <section className="card table-card"><div className="table-wrap">{records.length ? <table><thead><tr><th>Date</th><th>Amount</th><th>Note</th><th>Type</th><th>Actions</th></tr></thead><tbody>{records.map((e) => <tr key={e.id} data-testid={`row-record-${e.id}`}><td><strong>{humanDate(e.date)}</strong></td><td>{fmt(e.amount)} {unit(kind)}</td><td>{e.note || '—'}</td><td><span className={`unit-pill ${kind === 'water' ? 'blue' : ''}`}>{e.sample ? 'Sample' : 'Manual'}</span></td><td><div style={{ display: 'flex', gap: 2 }}><button className="icon-button" onClick={() => edit(e)} aria-label={`Edit ${humanDate(e.date)} record`} data-testid={`button-edit-${e.id}`}><Settings size={15} /></button><button className="icon-button" onClick={() => setDeleteId(e.id)} aria-label={`Delete ${humanDate(e.date)} record`} data-testid={`button-delete-${e.id}`}><Trash2 size={15} /></button></div></td></tr>)}</tbody></table> : <div className="empty-state"><span className="empty-icon">{kind === 'energy' ? <Zap size={21} /> : <Droplets size={21} />}</span><strong>{filter ? 'No readings on this date' : `No ${label.toLowerCase()} records yet`}</strong><p>{filter ? 'Try clearing the date filter or choosing another day.' : 'Add a manual reading or load sample data to explore the tracker.'}</p>{filter ? <button className="button button-quiet" onClick={() => setFilter('')} data-testid="button-empty-clear-filter">Clear date filter</button> : <button className="button button-quiet" onClick={onDemo} data-testid="button-empty-demo">Load sample data</button>}</div>}</div></section>
@@ -309,7 +321,7 @@ function SettingsPage({ settings, setSettings, onDemo, onClear }: Pick<Props, 's
   return <main className="content"><div className="page-heading"><div><div className="eyebrow">Make it yours</div><h1>Goals & preferences.</h1><p className="subtitle">Set realistic targets for the people and place you track.</p></div></div>
     <form className="card settings-section" onSubmit={save} style={{ maxWidth: 760 }}>
       <h2>Your resource goals</h2><p>Goals shape your progress bars, alerts, and Eco Score. They are yours to adjust as routines change.</p>
-      {rows.map(({ key, label, unit: suffix, step }) => <div className="settings-field-row" key={key}><label htmlFor={`setting-${key}`}>{label}</label><div style={{ position: 'relative' }}><input id={`setting-${key}`} type="number" min="0.01" step={step} value={draft[key]} onChange={(e) => update(key, e.target.value)} data-testid={`input-setting-${key}`} /><span style={{ position: 'absolute', right: 10, top: 10, color: '#89938c', fontSize: 10, pointerEvents: 'none' }}>{suffix}</span></div></div>)}
+      {rows.map(({ key, label, unit: suffix, step }) => <div className="settings-field-row" key={key}><label htmlFor={`setting-${key}`}>{label}</label><div style={{ position: 'relative' }}><input id={`setting-${key}`} type="number" min="0" step={step} value={draft[key]} onChange={(e) => update(key, e.target.value)} data-testid={`input-setting-${key}`} /><span style={{ position: 'absolute', right: 10, top: 10, color: '#89938c', fontSize: 10, pointerEvents: 'none' }}>{suffix}</span></div></div>)}
       {message && <p role="status" style={{ color: message.startsWith('All') ? '#a74336' : '#4a7954', margin: '15px 0 0' }} data-testid="settings-status">{message}</p>}
       <div className="settings-section-actions"><button className="button button-primary" type="submit" data-testid="button-save-settings"><Check size={15} />Save goals</button></div>
     </form>

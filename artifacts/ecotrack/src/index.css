@@ -500,6 +500,8 @@ h1 { font:800 clamp(27px,3vw,36px)/1.15 Manrope,sans-serif; letter-spacing:-1.4p
 .icon-button:hover { background:#eef3ec;color:#234b39; }
 .grid { display:grid; gap:18px; }
 .metrics-grid { grid-template-columns:repeat(4,minmax(0,1fr)); margin-bottom:20px; }
+.energy-summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-bottom:18px; }
+.energy-progress-panel { margin-bottom:18px; }
 .card { background:#fff; border:1px solid #e8ebe3; border-radius:16px; box-shadow:0 5px 20px #25412d08; }
 .metric { padding:20px 21px 19px; min-height:140px; position:relative; overflow:hidden; }
 .metric::after { content:""; position:absolute; width:90px;height:90px;border-radius:50%;right:-27px;top:-33px;background:#edf5e9; }
@@ -591,4 +593,4 @@ td strong { color:#365345; }
 .modal-actions { display:flex;justify-content:flex-end;gap:9px;margin-top:20px; }
 @media(max-width:1050px){.sidebar{width:220px}.main-area{margin-left:220px;width:calc(100% - 220px)}.content{padding:30px 26px 55px}.topbar{padding:0 26px}.metrics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.record-layout{grid-template-columns:minmax(0,1fr) 290px}}
 @media(max-width:760px){.sidebar{display:none}.main-area{margin:0;width:100%;padding-bottom:68px}.topbar{min-height:62px;padding:0 18px}.content{padding:25px 16px 35px}.page-heading{align-items:flex-start;flex-direction:column;margin-bottom:21px}.metrics-grid{gap:11px}.metric{padding:15px;min-height:126px}.metric-value{font-size:22px}.dashboard-grid,.record-layout,.settings-grid{grid-template-columns:1fr}.panel{padding:18px}.chart-area{height:230px}.mobile-nav{display:flex;position:fixed;z-index:20;inset:auto 0 0;background:#183b30;padding:8px 7px max(8px,env(safe-area-inset-bottom));justify-content:space-around;box-shadow:0 -5px 20px #183b3020}.mobile-nav a{display:flex;flex-direction:column;align-items:center;gap:4px;text-decoration:none;color:#b8cbc1;font-size:9px;padding:6px 9px;border-radius:9px}.mobile-nav a.active{background:#b7d9b1;color:#173d30}.mobile-nav svg{width:17px;height:17px}.topbar-label{font-size:11px}.topbar-right{font-size:11px}.toolbar{align-items:stretch}.toolbar input[type=date],.toolbar select{flex:1;min-width:140px}}
-@media(max-width:430px){.metrics-grid{grid-template-columns:1fr 1fr}.metric-value{font-size:20px}.metric-top{font-size:11px}.metric-foot{font-size:10px}.chart-area{height:210px}.content{padding-left:13px;padding-right:13px}}
+@media(max-width:430px){.metrics-grid{grid-template-columns:1fr 1fr}.energy-summary-grid{grid-template-columns:1fr;gap:11px}.metric-value{font-size:20px}.metric-top{font-size:11px}.metric-foot{font-size:10px}.chart-area{height:210px}.content{padding-left:13px;padding-right:13px}}
