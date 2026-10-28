@@ -98,14 +98,35 @@ function useStats(entries: Entry[], settings: SettingsData) {
     return { today, weekStart, energyAvg, waterAvg, energyDays, waterDays, score: score === null ? null : Math.round(score), energyToday, waterToday, energyWeek, waterWeek, cost: energyWeek * settings.price };
   }, [entries, settings]);
 }
-function chartData(entries: Entry[], kind: Kind, range: 'daily' | 'weekly') {
+function shiftIsoDate(value: string, offset: number) {
+  const date = new Date(value + 'T12:00:00');
+  date.setDate(date.getDate() + offset);
+  return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+}
+function chartData(entries: Entry[], kind: Kind, range: 'daily' | 'weekly', periodStart?: string, periodEnd?: string) {
+  if (periodStart || periodEnd) {
+    const endDate = periodEnd || isoDaysAgo(0);
+    const defaultDays = range === 'daily' ? 7 : 42;
+    const startDate = periodStart || shiftIsoDate(endDate, -(defaultDays - 1));
+    const dayCount = Math.floor((Date.parse(endDate + 'T00:00:00Z') - Date.parse(startDate + 'T00:00:00Z')) / 86400000) + 1;
+    if (dayCount <= 0) return [];
+    const bucketSize = range === 'daily' ? 1 : 7;
+    const bucketCount = Math.ceil(dayCount / bucketSize);
+    return Array.from({ length: bucketCount }, (_, idx) => {
+      const start = shiftIsoDate(startDate, idx * bucketSize);
+      const bucketDays = Math.min(bucketSize, dayCount - idx * bucketSize);
+      const end = shiftIsoDate(start, bucketDays - 1);
+      const total = entries.filter((e) => e.kind === kind && e.date >= start && e.date <= end).reduce((a, e) => a + e.amount, 0);
+      return { label: new Date(end + 'T12:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), energy: kind === 'energy' ? total : undefined, water: kind === 'water' ? total : undefined, amount: total };
+    });
+  }
   const length = range === 'daily' ? 7 : 6;
   return Array.from({ length }, (_, idx) => {
     const offset = length - 1 - idx;
     const date = isoDaysAgo(offset * (range === 'weekly' ? 7 : 1));
     const start = range === 'weekly' ? isoDaysAgo(offset * 7 + 6) : date;
     const total = entries.filter((e) => e.kind === kind && e.date >= start && e.date <= date).reduce((a, e) => a + e.amount, 0);
-    return { label: range === 'weekly' ? new Date(`${date}T12:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : new Date(`${date}T12:00:00`).toLocaleDateString('en-IN', { weekday: 'short' }), energy: kind === 'energy' ? total : undefined, water: kind === 'water' ? total : undefined, amount: total };
+    return { label: range === 'weekly' ? new Date(date + 'T12:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : new Date(date + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short' }), energy: kind === 'energy' ? total : undefined, water: kind === 'water' ? total : undefined, amount: total };
   });
 }
 function Progress({ title, current, target, kind, period = 'today' }: { title: string; current: number; target: number; kind: Kind; period?: string }) {
@@ -116,20 +137,21 @@ function Progress({ title, current, target, kind, period = 'today' }: { title: s
     <div className="progress-meta"><span>{Math.round(percent)}% of {period} target</span><span>{current > target ? `${fmt(current - target)} ${unit(kind)} over` : `${fmt(target - current)} ${unit(kind)} left`}</span></div>
   </div>;
 }
-function Chart({ entries, kind, view, onView, target }: { entries: Entry[]; kind: Kind; view: 'daily' | 'weekly'; onView: (v: 'daily' | 'weekly') => void; target: number }) {
-  const data = useMemo(() => chartData(entries, kind, view), [entries, kind, view]);
+function Chart({ entries, kind, view, onView, target, periodStart, periodEnd, rangeInvalid }: { entries: Entry[]; kind: Kind; view: 'daily' | 'weekly'; onView: (v: 'daily' | 'weekly') => void; target: number; periodStart?: string; periodEnd?: string; rangeInvalid: boolean }) {
+  const data = useMemo(() => rangeInvalid ? [] : chartData(entries, kind, view, periodStart, periodEnd), [entries, kind, view, periodStart, periodEnd, rangeInvalid]);
+  const hasData = data.some((point) => point.amount > 0);
   return <section className="card panel">
     <div className="panel-heading"><div><h2 className="panel-title">Your usage, over time</h2><p className="panel-note">A simple picture of your {kind === 'energy' ? 'electricity' : 'water'} routine</p></div>
-      <div className="chart-switch" aria-label="Chart period"><button className={view === 'daily' ? 'selected' : ''} onClick={() => onView('daily')} data-testid={`chart-view-daily-${kind}`}>Daily</button><button className={view === 'weekly' ? 'selected' : ''} onClick={() => onView('weekly')} data-testid={`chart-view-weekly-${kind}`}>Weekly</button></div></div>
-    <div className="chart-area" data-testid={`chart-${kind}`}><ResponsiveContainer width="100%" height="100%"><AreaChart data={data} margin={{ top: 5, right: 3, left: -18, bottom: 0 }}>
-      <defs><linearGradient id={`fill-${kind}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={kind === 'energy' ? '#508b61' : '#579caf'} stopOpacity={0.22} /><stop offset="95%" stopColor={kind === 'energy' ? '#508b61' : '#579caf'} stopOpacity={0.01} /></linearGradient></defs>
+      <div className="chart-switch" aria-label="Chart period"><button className={view === 'daily' ? 'selected' : ''} onClick={() => onView('daily')} data-testid={'chart-view-daily-' + kind}>Daily</button><button className={view === 'weekly' ? 'selected' : ''} onClick={() => onView('weekly')} data-testid={'chart-view-weekly-' + kind}>Weekly</button></div></div>
+    <div className="chart-area" data-testid={'chart-' + kind}>{hasData ? <ResponsiveContainer width="100%" height="100%"><AreaChart data={data} margin={{ top: 5, right: 3, left: -18, bottom: 0 }}>
+      <defs><linearGradient id={'fill-' + kind} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={kind === 'energy' ? '#508b61' : '#579caf'} stopOpacity={0.22} /><stop offset="95%" stopColor={kind === 'energy' ? '#508b61' : '#579caf'} stopOpacity={0.01} /></linearGradient></defs>
       <CartesianGrid stroke="#edf0e9" strokeDasharray="3 5" vertical={false} />
       <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#89958d', fontSize: 10 }} />
       <YAxis axisLine={false} tickLine={false} tick={{ fill: '#89958d', fontSize: 10 }} />
-      <Tooltip formatter={(value) => [`${fmt(Number(value))} ${unit(kind)}`, kindLabel(kind)]} contentStyle={{ borderRadius: 10, border: '1px solid #e7ece4', fontSize: 11 }} />
-      <Area type="monotone" dataKey="amount" stroke={kind === 'energy' ? '#4f8c60' : '#559daf'} strokeWidth={2.5} fill={`url(#fill-${kind})`} activeDot={{ r: 5 }} />
-    </AreaChart></ResponsiveContainer></div>
-    <div className="progress-meta"><span>Daily target: {fmt(target)} {unit(kind)}</span><span>{view === 'daily' ? 'Last 7 days' : 'Last 6 weeks'}</span></div>
+      <Tooltip formatter={(value) => [fmt(Number(value)) + ' ' + unit(kind), kindLabel(kind)]} contentStyle={{ borderRadius: 10, border: '1px solid #e7ece4', fontSize: 11 }} />
+      <Area type="monotone" dataKey="amount" stroke={kind === 'energy' ? '#4f8c60' : '#559daf'} strokeWidth={2.5} fill={'url(#fill-' + kind + ')'} activeDot={{ r: 5 }} />
+    </AreaChart></ResponsiveContainer> : <div className="chart-empty" role="status"><strong>{kind === 'energy' ? 'No electricity readings' : 'No water readings'} in this range</strong><span>{periodStart || periodEnd ? 'Adjust or clear the dates to see more history.' : 'Add a reading or load clearly labelled sample data to see this chart.'}</span></div>}</div>
+    <div className="progress-meta"><span>Daily target: {fmt(target)} {unit(kind)}</span><span>{rangeInvalid ? 'Check the selected dates' : periodStart || periodEnd ? (view === 'daily' ? 'Selected dates · daily' : 'Selected dates · 7-day totals') : view === 'daily' ? 'Last 7 days' : 'Last 6 weeks'}</span></div>
   </section>;
 }
 function Sidebar({ path }: { path: string }) {
@@ -155,9 +177,9 @@ function Metric({ label, value, foot, icon: Icon, type, testid }: { label: strin
   return <div className={`card metric ${type}`} data-testid={testid}><div className="metric-top"><span>{label}</span><span className="metric-icon"><Icon size={16} /></span></div><div className="metric-value">{value}</div><div className="metric-foot">{foot}</div></div>;
 }
 function activity(entries: Entry[]) { return [...entries].sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id)).slice(0, 5); }
-function ActivityList({ entries }: { entries: Entry[] }) {
+function ActivityList({ entries, emptyTitle, emptyMessage }: { entries: Entry[]; emptyTitle?: string; emptyMessage?: string }) {
   const list = activity(entries);
-  return <div className="activity-list">{list.length ? list.map((item) => <div className="activity-row" key={item.id} data-testid={`activity-${item.id}`}><span className={`activity-icon ${item.kind === 'water' ? 'blue' : ''}`}>{item.kind === 'energy' ? <Zap size={16} /> : <Droplets size={16} />}</span><div className="activity-main"><div className="activity-name">{item.note || `${kindLabel(item.kind)} record`}{item.sample && <span style={{ color: '#87938b', fontWeight: 500 }}> · sample</span>}</div><div className="activity-date">{humanDate(item.date)}</div></div><span className="activity-amount">{fmt(item.amount)} {unit(item.kind)}</span></div>) : <div className="empty-state"><span className="empty-icon"><Activity size={21} /></span><strong>No entries yet</strong><p>Add your first daily reading to start seeing patterns.</p></div>}</div>;
+  return <div className="activity-list">{list.length ? list.map((item) => <div className="activity-row" key={item.id} data-testid={'activity-' + item.id}><span className={'activity-icon ' + (item.kind === 'water' ? 'blue' : '')}>{item.kind === 'energy' ? <Zap size={16} /> : <Droplets size={16} />}</span><div className="activity-main"><div className="activity-name">{item.note || (kindLabel(item.kind) + ' record')}{item.sample && <span style={{ color: '#87938b', fontWeight: 500 }}> · sample</span>}</div><div className="activity-date">{humanDate(item.date)}</div></div><span className="activity-amount">{fmt(item.amount)} {unit(item.kind)}</span></div>) : <div className="empty-state"><span className="empty-icon"><Activity size={21} /></span><strong>{emptyTitle || 'No entries yet'}</strong><p>{emptyMessage || 'Add your first daily reading to start seeing patterns.'}</p></div>}</div>;
 }
 function InsightsData({ entries, settings }: Pick<Props, 'entries' | 'settings'>) {
   const stats = useStats(entries, settings);
@@ -198,10 +220,23 @@ function Overview({ entries, settings, onDemo, onClear, welcome, setWelcome }: P
   const stats = useStats(entries, settings);
   const insights = InsightsData({ entries, settings });
   const [view, setView] = useState<'daily' | 'weekly'>('daily');
+  const [periodStart, setPeriodStart] = useState('');
+  const [periodEnd, setPeriodEnd] = useState('');
+  const rangeInvalid = Boolean(periodStart && periodEnd && periodStart > periodEnd);
+  const historyEntries = useMemo(() => rangeInvalid ? [] : entries.filter((entry) => (!periodStart || entry.date >= periodStart) && (!periodEnd || entry.date <= periodEnd)), [entries, periodStart, periodEnd, rangeInvalid]);
   return <main className="content">
     <div className="page-heading"><div><div className="eyebrow">Resource journal</div><h1>Good morning. Here’s your footprint.</h1><p className="subtitle">Small numbers, seen clearly, make better habits easier.</p></div><div style={{ display: 'flex', gap: 9 }}><button className="button button-quiet" onClick={onDemo} data-testid="button-load-demo-top"><Plus size={15} />Load sample data</button><button className="button button-primary" onClick={onClear} data-testid="button-reset-data"><Trash2 size={15} />Reset entries</button></div></div>
     {welcome && <WelcomeBanner onDemo={onDemo} onClose={() => setWelcome(false)} />}
     {stats.score === null && <div className="notice" data-testid="empty-welcome">Welcome. Start by adding an electricity or water reading. Sample records are ready to explore from the button above.</div>}
+    <section className="card history-filter-panel" data-testid="dashboard-history-filter">
+      <div><strong>Filter history</strong><p className="panel-note">The date range filters charts and recent activity. Headline totals and progress remain focused on current usage.</p></div>
+      <div className="history-filter-controls">
+        <label htmlFor="dashboard-date-from">From<input id="dashboard-date-from" type="date" aria-label="History start date" value={periodStart} max={periodEnd || stats.today} onChange={(e) => setPeriodStart(e.target.value)} data-testid="dashboard-date-from-input" /></label>
+        <label htmlFor="dashboard-date-to">To<input id="dashboard-date-to" type="date" aria-label="History end date" value={periodEnd} min={periodStart || undefined} max={stats.today} onChange={(e) => setPeriodEnd(e.target.value)} data-testid="dashboard-date-to-input" /></label>
+        <button type="button" className="button button-quiet" onClick={() => { setPeriodStart(''); setPeriodEnd(''); }} disabled={!periodStart && !periodEnd} data-testid="button-clear-dashboard-dates">Clear dates</button>
+      </div>
+      {rangeInvalid && <div className="form-error" role="alert" data-testid="dashboard-date-error">Start date must be on or before end date.</div>}
+    </section>
     <div className="grid metrics-grid">
       <Metric label="Electricity · today" value={`${fmt(stats.energyToday)} kWh`} foot={`7-day total ${fmt(stats.energyWeek)} kWh`} icon={Zap} type="energy" testid="value-energy-today" />
       <Metric label="Water · today" value={`${fmt(stats.waterToday)} litres`} foot={`7-day total ${fmt(stats.waterWeek)} litres`} icon={Droplets} type="water" testid="value-water-today" />
@@ -210,15 +245,15 @@ function Overview({ entries, settings, onDemo, onClear, welcome, setWelcome }: P
     </div>
     <div className="grid dashboard-grid">
       <div className="grid" style={{ gap: 18 }}>
-        <Chart entries={entries} kind="energy" view={view} onView={setView} target={settings.energyDaily} />
-        <Chart entries={entries} kind="water" view={view} onView={setView} target={settings.waterDaily} />
+        <Chart entries={historyEntries} kind="energy" view={view} onView={setView} target={settings.energyDaily} periodStart={periodStart || undefined} periodEnd={periodEnd || undefined} rangeInvalid={rangeInvalid} />
+        <Chart entries={historyEntries} kind="water" view={view} onView={setView} target={settings.waterDaily} periodStart={periodStart || undefined} periodEnd={periodEnd || undefined} rangeInvalid={rangeInvalid} />
         <section className="card panel"><div className="panel-heading"><div><h2 className="panel-title">At a glance</h2><p className="panel-note">Daily progress against the goals you set</p></div></div>
           <Progress title="Electricity" current={stats.energyToday} target={settings.energyDaily} kind="energy" /><Progress title="Water" current={stats.waterToday} target={settings.waterDaily} kind="water" />
           <div style={{ marginTop: 22 }}><Progress title="Electricity this week" current={stats.energyWeek} target={settings.energyWeekly} kind="energy" period="week" /><Progress title="Water this week" current={stats.waterWeek} target={settings.waterWeekly} kind="water" period="week" /></div>
         </section>
       </div>
       <div className="grid" style={{ gap: 18, alignContent: 'start' }}>
-        <section className="card panel"><div className="panel-heading"><div><h2 className="panel-title">Your recent activity</h2><p className="panel-note">The latest readings on this device</p></div><Link href="/energy" className="button button-quiet" style={{ textDecoration: 'none', padding: '7px 10px', fontSize: 11 }} data-testid="link-all-records">View records</Link></div><ActivityList entries={entries} /></section>
+        <section className="card panel"><div className="panel-heading"><div><h2 className="panel-title">Your recent activity</h2><p className="panel-note">The latest readings on this device</p></div><Link href="/energy" className="button button-quiet" style={{ textDecoration: 'none', padding: '7px 10px', fontSize: 11 }} data-testid="link-all-records">View records</Link></div><ActivityList entries={historyEntries} emptyTitle={periodStart || periodEnd ? 'No readings in this date range' : 'No entries yet'} emptyMessage={rangeInvalid ? 'Choose a valid start and end date.' : periodStart || periodEnd ? 'Adjust or clear the date range to see activity.' : 'Add your first daily reading to start seeing patterns.'} /></section>
         <section className="card panel"><div className="panel-heading"><div><h2 className="panel-title">Worth a second look</h2><p className="panel-note">Patterns, not diagnoses</p></div><AlertTriangle size={18} color="#b18845" /></div>
           {insights.alerts.length ? insights.alerts.slice(0, 2).map((a, i) => <div className="alert-card" key={a.title}><span className="alert-mark"><AlertTriangle size={15} /></span><div className="alert-text"><strong>{a.title}</strong><p>{a.reason}</p></div></div>) : <div className="alert-card"><span className="alert-mark" style={{ background: '#eaf3e9', color: '#4e8658' }}><Check size={15} /></span><div className="alert-text"><strong>No unusual usage alerts</strong><p>Alerts appear when enough records support a useful comparison.</p></div></div>}
           <div className="disclaimer">A possible high-use day is a prompt to review your manual entries—not evidence of a leak or faulty appliance.</div>
